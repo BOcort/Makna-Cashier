@@ -1,0 +1,8 @@
+export { default as Home } from './Home/Home.jsx'
+export { default as Menu } from './Menu/Menu.jsx'
+export { default as Report } from './Report/Report.jsx'
+export { default as Payment } from './Payment/Payment.jsx'
+export { default as Location } from './Location/Location.jsx'
+export { default as Backup } from './Backup/Backup.jsx'
+export { default as Login } from './Login/Login.jsx'
+export { default as NotFound } from './Other/NotFound.jsx'
