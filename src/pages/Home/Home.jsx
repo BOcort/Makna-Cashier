@@ -4,9 +4,11 @@ import MenuCard from '../../components/cashier/MenuCard.jsx';
 import ItemDetailModal from '../../components/cashier/ItemDetailModal.jsx';
 import CartDrawer from '../../components/cashier/CartDrawer.jsx';
 import PaymentModal from '../../components/cashier/PaymentModal.jsx';
+import ReceiptModal from '../../components/cashier/ReceiptModal.jsx';
 import ClosingModal from '../../components/cashier/ClosingModal.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { useLocation } from '../../contexts/LocationContext.jsx';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import { menuQueries, paymentQueries, transactionQueries, closingQueries } from '../../services/queries.js';
 import { formatRupiah } from '../../utils/format.js';
 
@@ -14,6 +16,7 @@ let cartItemIdCounter = 0;
 
 export default function Home() {
   const toast = useToast();
+  const { user } = useAuth();
   const { activeLocation, sessionOpenedAt, clearLocation } = useLocation();
 
   // Menu data
@@ -28,6 +31,8 @@ export default function Home() {
   const [showCartDrawer, setShowCartDrawer] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showClosingModal, setShowClosingModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [completedTransaction, setCompletedTransaction] = useState(null);
 
   // Cart
   const [cart, setCart] = useState([]);
@@ -172,40 +177,75 @@ export default function Home() {
       toast.warning('Keranjang masih kosong');
       return;
     }
+    setShowCartDrawer(false);
     setShowPaymentModal(true);
   };
 
   // Confirm payment in PaymentModal
-  const handleConfirmPayment = ({ paidAmount, changeAmount, paymentMethodId, paymentId }) => {
+  const handleConfirmPayment = ({
+    paidAmount,
+    changeAmount,
+    paymentMethodId,
+    paymentMethodName,
+    paymentId,
+    autoPrint,
+    sendWhatsApp,
+    customerPhone,
+    orderType,
+    tableNumber,
+    orderNumber
+  }) => {
     if (!activeLocation) {
       toast.error('Cabang aktif tidak ditemukan');
       return;
     }
 
+    const orderItems = cart.map(item => ({
+      menuItemId: item.menuItemId,
+      sizeId: item.sizeId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      subtotal: item.subtotal,
+      menuName: item.menuName,
+      sizeName: item.sizeName,
+      iceLevel: item.iceLevel,
+      notes: item.notes
+    }));
+
     try {
-      transactionQueries.create(
+      const txId = transactionQueries.create(
         activeLocation.id,
         paymentMethodId,
-        paymentId,
+        paymentId || orderNumber,
         cartTotalAmount,
         paidAmount,
         changeAmount,
-        cart.map(item => ({
-          menuItemId: item.menuItemId,
-          sizeId: item.sizeId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          subtotal: item.subtotal,
-          menuName: item.menuName,
-          sizeName: item.sizeName
-        }))
+        orderItems
       );
 
+      const trxRecord = {
+        id: txId,
+        items: orderItems,
+        totalAmount: cartTotalAmount,
+        paidAmount,
+        changeAmount,
+        paymentMethodName: paymentMethodName || 'Cash',
+        paymentId: paymentId || orderNumber,
+        orderType,
+        tableNumber,
+        orderNumber: orderNumber || `MK-${txId}`,
+        createdAt: new Date().toISOString()
+      };
+
+      setCompletedTransaction(trxRecord);
       setCart([]);
       setShowPaymentModal(false);
       setShowCartDrawer(false);
       loadData();
-      toast.success('🎉 Transaksi Berhasil & Struk Tercetak!');
+      toast.success('🎉 Transaksi Berhasil & Tersimpan!');
+
+      // Show receipt popup
+      setShowReceiptModal(true);
     } catch (err) {
       console.error('Payment error:', err);
       toast.error('Gagal memproses transaksi');
@@ -526,9 +566,21 @@ export default function Home() {
         totalAmount={cartTotalAmount}
         paymentMethods={paymentMethods}
         activeLocation={activeLocation}
+        cart={cart}
+        cartTotalCount={cartTotalCount}
+        cashierName={user?.username || 'Rian'}
       />
 
-      {/* 4. Shift Closing Modal */}
+      {/* 4. Thermal Receipt Modal */}
+      <ReceiptModal
+        show={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        transactionData={completedTransaction}
+        activeLocation={activeLocation}
+        cashierName={user?.username || 'Rian'}
+      />
+
+      {/* 5. Shift Closing Modal */}
       <ClosingModal
         show={showClosingModal}
         onClose={() => setShowClosingModal(false)}

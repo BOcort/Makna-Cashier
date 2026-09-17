@@ -15,9 +15,9 @@ export function AuthProvider({ children }) {
       try {
         const count = userQueries.count();
         if (count === 0) {
-          const defaultUsername = import.meta.env.VITE_INITIAL_USERNAME || 'admin';
-          const defaultPassword = import.meta.env.VITE_INITIAL_PASSWORD || 'makna2024';
-          const defaultQR = import.meta.env.VITE_QR_SECRET || 'MAKNA-QR-2024-SECRET';
+          const defaultUsername = import.meta.env.VITE_INITIAL_USERNAME;
+          const defaultPassword = import.meta.env.VITE_INITIAL_PASSWORD;
+          const defaultQR = import.meta.env.VITE_QR_SECRET
           const hash = await hashPassword(defaultPassword);
           userQueries.create(defaultUsername, hash, defaultQR);
         }

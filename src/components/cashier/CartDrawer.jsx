@@ -160,10 +160,7 @@ export default function CartDrawer({
             <button
               type="button"
               className="cart-pay-btn"
-              onClick={() => {
-                onClose();
-                onProceedPayment();
-              }}
+              onClick={onProceedPayment}
             >
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]">payments</span>
